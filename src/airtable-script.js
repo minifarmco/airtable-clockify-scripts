@@ -143,6 +143,12 @@ const clockifyTags = [
     archived: false
   },
   {
+    id: "5f724d27956dd5176b6f6007",
+    name: "inventory-purchasing",
+    workspaceId: "5f70eca68ecf85798d53ba39",
+    archived: false
+  },
+  {
     id: "5f722c878ecf85798d5cc60a",
     name: "legal-compliance",
     workspaceId: "5f70eca68ecf85798d53ba39",
