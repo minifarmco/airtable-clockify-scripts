@@ -312,11 +312,18 @@ try {
     }
   }
 
+  // Get taskId of record
+  let clockifyTaskIdField = await table.getField("Clockify Task ID");
+  const clockifyTaskId = await currentRecord.getCellValue(
+    clockifyTaskIdField.id
+  );
+
   const payload = {
     start: new Date().toISOString(),
     billable: "false",
     description: taskTitle,
     projectId: clockifyProjectId,
+    taskId: clockifyTaskId,
     tagIds: matchingClockifyTagIds,
     customFields: [
       // When we buy the Clockify Enterprise Plan, we can add customField for url linking back to Airtask
