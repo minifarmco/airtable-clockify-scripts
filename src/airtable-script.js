@@ -246,6 +246,12 @@ try {
       archived: false
     },
     {
+      id: "5f725386956dd5176b6f6ca1",
+      name: "sync-sweep",
+      workspaceId: "5f70eca68ecf85798d53ba39",
+      archived: false
+    },
+    {
       id: "5f722cb3956dd5176b6f2008",
       name: "taxation",
       workspaceId: "5f70eca68ecf85798d53ba39",
