@@ -1,5 +1,6 @@
 // Clockify + Todoist Integration
-// Code History: https://codesandbox.io/s/vigorous-kepler-cgfef
+// Codesandbox: https://codesandbox.io/s/purple-hooks-1b90v
+// Github Repo: https://github.com/minifarmco/airtable-clockify-scripts
 output.markdown("# Airtask Timer");
 
 const getCurrentUserClockifyApiKey = async () => {
