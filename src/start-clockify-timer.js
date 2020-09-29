@@ -276,6 +276,7 @@ try {
   // Get title of record
   let taskTitleField = await table.getField("Title");
   const taskTitle = await currentRecord.getCellValue(taskTitleField.id);
+
   output.markdown(`
   ###### Starting task:
   ## ${taskTitle}
@@ -350,6 +351,30 @@ try {
   });
   const jsonTest = await response.json();
   // output.inspect(jsonTest);
+
+  // Get actual start time of record
+  const actualStartTimeFieldNameInAirtable = "Actual Start Time";
+  let taskActualStartTimeField = await table.getField(
+    actualStartTimeFieldNameInAirtable
+  );
+  const actualStartTime = await currentRecord.getCellValue(
+    taskActualStartTimeField.id
+  );
+  // Update the actual start time if none exists
+  if (!actualStartTime) {
+    // Update the airtable row with the clockifyTaskId
+    const startime = new Date().toISOString();
+    await table.updateRecordAsync(currentRecord.id, {
+      [actualStartTimeFieldNameInAirtable]: startime
+    });
+    output.markdown(`
+✅ Updated Airtable row with actual start time at ${startime}
+    `);
+  } else {
+    output.markdown(`
+✅ There is already an actual start time ${actualStartTime}
+    `);
+  }
 
   output.markdown(`
   ## ✅ Success! Timer has started.
