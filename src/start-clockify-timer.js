@@ -352,7 +352,7 @@ This script will now exit.
     });
     const jsonResult = await taskResponse.json();
     const generatedClockifyTaskId = jsonResult.id;
-    // output.inspect(jsonResult);
+    output.inspect(jsonResult);
     if (!generatedClockifyTaskId) {
       throw new Error(
         `Could not create a generatedClockifyTaskId. Most likely this Clockify User does not have access to this Project ${clockifyProjectId}`
