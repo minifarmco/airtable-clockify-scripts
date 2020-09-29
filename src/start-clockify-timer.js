@@ -5,7 +5,7 @@
 output.markdown("# Airtask Timer");
 
 try {
-  const getCurrentUserClockifyApiKey = async () => {
+  const getCurrentUserClockifyApiAndUserKey = async () => {
     const clockifyApiKeyTable = "tblKyuP9jphZ2cjhQ";
     const clockifyApiKeyView = "viwv5WeqgNlEX0qYx";
     const apiTable = await base.getTable(clockifyApiKeyTable);
@@ -17,13 +17,14 @@ try {
         return {
           airtableCollaboratorId: row.getCellValue("Airtable Collaborator ID"),
           nickname: row.getCellValue("Nickname"),
-          clockifyApiKey: row.getCellValue("Clockify API Key")
+          clockifyApiKey: row.getCellValue("Clockify API Key"),
+          clockifyUserKey: row.getCellValue("Clockify User ID")
         };
       });
     const myCollaboratorDetails = collaborators.find(
       (c) => c.airtableCollaboratorId === session.currentUser.id
     );
-    return myCollaboratorDetails.clockifyApiKey;
+    return myCollaboratorDetails;
   };
 
   // Copy & Paste latest clockify json here
@@ -273,9 +274,30 @@ try {
     table
   );
 
-  // Get title of record
+  // Get title of record if there is no pre-existing Clockify Task ID
   let taskTitleField = await table.getField("Title");
   const taskTitle = await currentRecord.getCellValue(taskTitleField.id);
+
+  // Check if Clockify Task ID already exists in Airtable row
+  output.markdown(`Checking if a Clockify Task ID already exists...`);
+  const clockifyFieldNameInAirtable = "Clockify Task ID";
+  let clockifyTaskIdField = await table.getField(clockifyFieldNameInAirtable);
+  const clockifyTaskId = await currentRecord.getCellValue(
+    clockifyTaskIdField.id
+  );
+  if (clockifyTaskId) {
+    output.markdown(`
+## Clockify Task ID ${clockifyTaskId} already exists!
+There is no need to create a new Task ID. If you insist on creating a new Task ID, please delete the contents of the field in the Airtable row.
+This script will now exit.
+    `);
+  } else {
+    output.markdown(`No Clockify ID exists yet.`);
+    output.markdown(`
+    ###### Creating Clockify task:
+    ## ${taskTitle}
+    `);
+  }
 
   output.markdown(`
   ###### Starting task:
@@ -291,6 +313,65 @@ try {
   const clockifyProjectId = clockifyProjectList
     ? clockifyProjectList[0]
     : clockifyProjectList;
+
+  // Get Clockify User Details
+  output.markdown(`Getting Clockify User Details`);
+  const clockifyUser = await getCurrentUserClockifyApiAndUserKey();
+  output.markdown(`Successfully Clockify User ID ${clockifyUser.nickname}`);
+
+  output.markdown(`Creating the task creation event payload`);
+  const taskPayload = {
+    name: `${taskTitle} - by ${clockifyUser.nickname}`,
+    projectId: clockifyProjectId,
+    assigneeIds: [clockifyUser.clockifyUserKey],
+    status: "ACTIVE"
+  };
+  console.log(taskPayload);
+  output.markdown(`${JSON.stringify(taskPayload)}`);
+  const workspaceId = "5f70eca68ecf85798d53ba39";
+  const clockify_api_key = clockifyUser.clockifyApiKey;
+  const base_url = `https://api.clockify.me/api/v1/`;
+  const task_api_path = `workspaces/${workspaceId}/projects/${clockifyProjectId}/tasks`;
+  const task_url = `${base_url}${task_api_path}`;
+  if (!clockifyTaskId) {
+    output.markdown(`Creating the task...`);
+    const taskResponse = await fetch(task_url, {
+      method: "POST", // *GET, POST, PUT, DELETE, etc.
+      mode: "cors", // no-cors, *cors, same-origin
+      cache: "no-cache", // *default, no-cache, reload, force-cache, only-if-cached
+      credentials: "same-origin", // include, *same-origin, omit
+      headers: {
+        "Content-Type": "application/json",
+        "X-Api-Key": clockify_api_key
+      },
+      redirect: "follow", // manual, *follow, error
+      referrerPolicy: "no-referrer", // no-referrer, *no-referrer-when-downgrade, origin, origin-when-cross-origin, same-origin, strict-origin, strict-origin-when-cross-origin, unsafe-url
+      body: JSON.stringify(taskPayload) // body data type must match "Content-Type" header
+    });
+    const jsonResult = await taskResponse.json();
+    const generatedClockifyTaskId = jsonResult.id;
+    // output.inspect(jsonResult);
+    if (!generatedClockifyTaskId) {
+      throw new Error(
+        `Could not create a generatedClockifyTaskId. Most likely this Clockify User does not have access to this Project ${clockifyProjectId}`
+      );
+    }
+    output.markdown(`
+    ✅ Created task in Clockify with ID: ${generatedClockifyTaskId}
+    `);
+
+    // Update the airtable row with the clockifyTaskId
+    await table.updateRecordAsync(currentRecord.id, {
+      [clockifyFieldNameInAirtable]: generatedClockifyTaskId
+    });
+    output.markdown(`
+    ✅ Updated Airtable row with Clockify Task ID
+    `);
+
+    output.markdown(`
+    ## ✅ Success! Clockify Task was created.
+    `);
+  }
 
   // Get Airtable Tags from record and match against hardcoded Clockify Tags
   let airtableTagsField = await table.getField("Tags");
@@ -313,12 +394,6 @@ try {
     }
   }
 
-  // Get taskId of record
-  let clockifyTaskIdField = await table.getField("Clockify Task ID");
-  const clockifyTaskId = await currentRecord.getCellValue(
-    clockifyTaskIdField.id
-  );
-
   const payload = {
     start: new Date().toISOString(),
     billable: "false",
@@ -331,9 +406,6 @@ try {
     ]
   };
 
-  const workspaceId = "5f70eca68ecf85798d53ba39";
-  const clockify_api_key = await getCurrentUserClockifyApiKey();
-  const base_url = `https://api.clockify.me/api/v1/`;
   const api_path = `workspaces/${workspaceId}/time-entries`;
   const url = `${base_url}${api_path}`;
   const response = await fetch(url, {

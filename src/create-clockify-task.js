@@ -1,3 +1,5 @@
+// [DEPRECATED]
+
 // Clockify + Todoist Integration
 // Written by Mini-Farm Co.
 // Codesandbox: https://codesandbox.io/s/loving-rain-ji0se
@@ -28,14 +30,17 @@ try {
   };
 
   // Get current airtable record
+  output.markdown("Getting current airtable record...");
   const taskTableId = "tblA0GCA2aDJ0lDwv";
   const table = await base.getTable(taskTableId);
   const currentRecord = await input.recordAsync(
     "Creating Clockify Task for Shopify Task",
     table
   );
+  output.markdown(`Got record: ${currentRecord.name}`);
 
   // Check if Clockify Task ID already exists in Airtable row
+  output.markdown(`Checking if a Clockify Task ID already exists...`);
   const clockifyFieldNameInAirtable = "Clockify Task ID";
   let clockifyTaskIdField = await table.getField(clockifyFieldNameInAirtable);
   const clockifyTaskId = await currentRecord.getCellValue(
@@ -49,6 +54,7 @@ This script will now exit.
     `);
     return;
   }
+  output.markdown(`No Clockify ID exists yet.`);
   // Get title of record if there is no pre-existing Clockify Task ID
   let taskTitleField = await table.getField("Title");
   const taskTitle = await currentRecord.getCellValue(taskTitleField.id);
@@ -58,6 +64,7 @@ This script will now exit.
   `);
 
   // Get Clockify Project ID from record
+  output.markdown(`Getting Clockify Project ID from Airtable record`);
   let clockifyProjectField = await table.getField("Clockify Project ID");
   const clockifyProjectList = await currentRecord.getCellValue(
     clockifyProjectField.id
@@ -65,21 +72,30 @@ This script will now exit.
   const clockifyProjectId = clockifyProjectList
     ? clockifyProjectList[0]
     : clockifyProjectList;
+  output.markdown(
+    `Got Clockify Project ID: ${clockifyProjectId} from Airtable record`
+  );
 
   // Get Clockify User Details
+  output.markdown(`Getting Clockify User Details`);
   const clockifyUser = await getCurrentUserClockifyApiAndUserKey();
+  output.markdown(`Successfully Clockify User ID ${clockifyUser.nickname}`);
 
+  output.markdown(`Creating the task creation event payload`);
   const payload = {
-    name: taskTitle,
+    name: `${taskTitle} - by ${clockifyUser.nickname}`,
     projectId: clockifyProjectId,
     assigneeIds: [clockifyUser.clockifyUserKey],
     status: "ACTIVE"
   };
+  console.log(payload);
+  output.markdown(`${JSON.stringify(payload)}`);
   const workspaceId = "5f70eca68ecf85798d53ba39";
   const clockify_api_key = clockifyUser.clockifyApiKey;
   const base_url = `https://api.clockify.me/api/v1/`;
   const api_path = `workspaces/${workspaceId}/projects/${clockifyProjectId}/tasks`;
   const url = `${base_url}${api_path}`;
+  output.markdown(`Creating the task...`);
   const response = await fetch(url, {
     method: "POST", // *GET, POST, PUT, DELETE, etc.
     mode: "cors", // no-cors, *cors, same-origin
@@ -96,6 +112,11 @@ This script will now exit.
   const jsonResult = await response.json();
   const generatedClockifyTaskId = jsonResult.id;
   // output.inspect(jsonResult);
+  if (!generatedClockifyTaskId) {
+    throw new Error(
+      `Could not create a generatedClockifyTaskId. Most likely this Clockify User does not have access to this Project ${clockifyProjectId}`
+    );
+  }
   output.markdown(`
   ✅ Created task in Clockify with ID: ${generatedClockifyTaskId}
   `);
@@ -112,7 +133,7 @@ This script will now exit.
   ## ✅ Success! Clockify Task was created.
   `);
 } catch (e) {
-  console.log(e);
+  console.log(e.toString());
   output.markdown(`
 # ❌ Error: Failed to create Clockify Task
 Message @kangzeroo on Slack to get this investigated and fixed
