@@ -321,7 +321,9 @@ This script will now exit.
 
   output.markdown(`Creating the task creation event payload`);
   const taskPayload = {
-    name: `${taskTitle} - by ${clockifyUser.nickname}`,
+    name: `${taskTitle} - by ${
+      clockifyUser.nickname
+    } on ${new Date().toISOString()}`,
     projectId: clockifyProjectId,
     assigneeIds: [clockifyUser.clockifyUserKey],
     status: "ACTIVE"
